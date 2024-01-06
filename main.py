@@ -75,8 +75,3 @@ async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f"Hi, {interaction.user.mention}! Nice to meet you!")
 
 bot.run(token)
-# try:
-#     keep_alive()
-#     bot.run(token)
-# except:
-#     os.system("kill 1")
