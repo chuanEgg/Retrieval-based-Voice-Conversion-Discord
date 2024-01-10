@@ -156,6 +156,7 @@ class VC:
         rms_mix_rate,
         protect,
     ):
+        print(sid, input_audio_path, f0_up_key, f0_file, f0_method, file_index, file_index2, index_rate, filter_radius, resample_sr, rms_mix_rate, protect)
         if input_audio_path is None:
             return "You need to upload an audio", None
         f0_up_key = int(f0_up_key)

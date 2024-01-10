@@ -66,7 +66,7 @@ async def sync(ctx):
     else:
         await ctx.send("You are not the owner!")
 
-@bot.command(help="Download audio from youtube.", brief="Download audio from youtube.")
+@bot.command(help="Download audio from youtube. format: mp3", brief="Download audio from youtube.")
 async def download(ctx, url: str):
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -86,6 +86,10 @@ async def download(ctx, url: str):
             os.remove("downloads/temp.mp3")
         except:
             await ctx.send("Error!")
+
+@bot.command(help="make Nyan sing using AI!", brief="sing!")
+async def sing(ctx):
+    
 
 @bot.tree.command(name="ping")
 async def ping(interaction: discord.Interaction):
