@@ -134,6 +134,23 @@ class voice_converter:
             if name.endswith(".pth") or "onnx" in name:
                 self.uvr5_names.append(name.replace(".pth", ""))
 
+    def vocal_extract(self,
+                      model_choose = 'HP5_only_main_vocal',
+                      dir_wav_input = 'E:\\Retrieval-based-Voice-Conversion-Discord\\audio',
+                      opt_vocal_root = 'opt',
+                      wav_inputs = None,
+                      opt_ins_root = 'opt',
+                      agg = 10,
+                      format0 = 'wav'):
+        # HP5_only_main_vocal E:\Retrieval-based-Voice-Conversion-Discord\audio opt None opt 10 mp3
+        uvr(model_name=model_choose, 
+            inp_root=dir_wav_input, 
+            save_root_vocal=opt_vocal_root, 
+            paths=wav_inputs, 
+            save_root_ins=opt_ins_root, 
+            agg=agg, 
+            format0=format0)
+        
     def change_sid(self, sid = 'nyan.pth', protect0 = 0.33, protect1 = 0.33):
         [spk_item, protect0, protect1, file_index2, file_index4] = self.vc.get_vc(sid, protect0, protect1)
         print(spk_item, protect0, protect1, file_index2, file_index4)
@@ -142,7 +159,7 @@ class voice_converter:
               sid = 0,
               spk_item = 0,
               input_audio0 = None, 
-              vc_transform0 = 0.0, 
+              vc_transform0 = -12, 
               f0_file = None, 
               f0method0 = 'rmvpe', 
               file_index1 = 'logs/nyan/added_IVF631_Flat_nprobe_1_nyan_v2.index', 
@@ -174,11 +191,12 @@ class voice_converter:
 
 if __name__ == "__main__":
     obj = voice_converter()
-    obj.change_sid()
-    now_dir = os.getcwd()
-    res = obj.infer(input_audio0='E:\\Retrieval-based-Voice-Conversion-Discord\\test.wav',
-                    vc_transform0=-12)
-    import numpy as np
-    from scipy.io.wavfile import write
-    rate = res[0]
-    write('result.wav', rate, res[1])
+    # obj.change_sid()
+    # now_dir = os.getcwd()
+    # res = obj.infer(input_audio0='E:\\Retrieval-based-Voice-Conversion-Discord\\test.wav',
+    #                 vc_transform0=-12)
+    # import numpy as np
+    # from scipy.io.wavfile import write
+    # rate = res[0]
+    # write('result.wav', rate, res[1])
+    obj.vocal_extract()

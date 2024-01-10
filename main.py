@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import os
-# import infer_bot as rvc
+import infer_bot as rvc
 import yt_dlp as youtube_dl
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='^', intents=intents)
@@ -14,14 +14,14 @@ async def load_extensions():
         for extension in f:
             await bot.load_extension("src." + extension.strip('\n'))
 
+voice_converter = rvc.voice_converter()
+voice_converter.change_sid()
+
 @bot.event
 async def on_ready():
     await load_extensions()
     status_w = discord.Status.online
     activity_w = discord.Activity(type=discord.ActivityType.playing, name="osu!")
-    # rvc.vc_setup()
-    # rvc.uvr_setup()
-
     await bot.change_presence(status=status_w, activity=activity_w)
     print("Ready!")
     print("User name:", bot.user.name)
@@ -66,8 +66,7 @@ async def sync(ctx):
     else:
         await ctx.send("You are not the owner!")
 
-@bot.command(help="Download audio from youtube. format: mp3", brief="Download audio from youtube.")
-async def download(ctx, url: str):
+def download_audio(url: str):
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
@@ -75,20 +74,82 @@ async def download(ctx, url: str):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        'outtmpl': 'downloads/temp.%(ext)s'
+        'outtmpl': 'audio/temp.%(ext)s'
     }
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        try:
-            await ctx.send("Downloading...")
+        if ydl.extract_info(url, download=False)['duration'] > 300:
+            return False
+        try:            
             ydl.download([url])
-            await ctx.send(file=discord.File("downloads/temp.mp3"))
-            await ctx.send("Downloaded!")
-            os.remove("downloads/temp.mp3")
+            return True
         except:
-            await ctx.send("Error!")
+            return False
+            
+@bot.command(help="Download audio from youtube. format: mp3", brief="Download audio from youtube.")
+async def download(ctx, url: str):
+    if url == "":
+        await ctx.send("Please input a url.")
+        return
+    await ctx.send("Downloading...")
+    result = download_audio(url)
+    if result:
+        await ctx.send(file=discord.File("audio/temp.mp3"))
+        await ctx.send("Downloaded!")
+        # os.remove("audio/raw/temp.mp3")
+    else:
+        await ctx.send("Error!")
+    
 
 @bot.command(help="make Nyan sing using AI!", brief="sing!")
-async def sing(ctx):
+async def sing(ctx, url: str, transpose: float = 0):
+    if url == "":
+        await ctx.send("Please input a url.")
+        return
+    await ctx.send("Downloading audio...")
+    result = download_audio(url)
+    if result:
+        await ctx.send("Extracting vocal...")
+        try:
+            voice_converter.vocal_extract()
+        except:
+            await ctx.send("Error during vocal extraction!")
+            return
+        await ctx.send("Forcing Nyan to sing...")
+        try:
+            res = voice_converter.infer(vc_transform0=transpose, input_audio0="opt\\vocal_temp.mp3.reformatted.wav_10.wav")
+        except:
+            await ctx.send("Error during inference!")
+            return
+        await ctx.send("Recording...")
+
+        from scipy.io.wavfile import write
+        import wave
+        try:
+            rate = res[0]
+            write('audio/cover.wav', rate, res[1])
+            infiles = ["audio/cover.wav", "opt\\instrument_temp.mp3.reformatted.wav_10.wav"]
+            outfile = "result.wav"
+
+            data= []
+            for infile in infiles:
+                w = wave.open(infile, 'rb')
+                data.append( [w.getparams(), w.readframes(w.getnframes())] )
+                w.close()
+
+            output = wave.open(outfile, 'wb')
+            output.setparams(data[0][0])
+            output.writeframes(data[0][1])
+            output.writeframes(data[1][1])
+            output.close()
+
+            await ctx.send(file=discord.File("result.wav"))
+            await ctx.send("Nyan finished singing!")
+        except:
+            await ctx.send("Error during file writing!")
+            return
+        # # os.remove("audio/raw/temp.mp3")
+    else:
+        await ctx.send("Error!")
     
 
 @bot.tree.command(name="ping")
