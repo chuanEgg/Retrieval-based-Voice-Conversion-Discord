@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import os
-
+import infer_bot as rvc
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='^', intents = intents)
 
@@ -21,6 +21,8 @@ async def on_ready():
     print(f"Synced {len(synced)} command(s)")
     status_w = discord.Status.online
     activity_w = discord.Activity(type=discord.ActivityType.watching, name="chuan's YouTube")
+    rvc.vc_setup()
+    rvc.uvr_setup()
 
     await bot.change_presence(status=status_w, activity=activity_w)
     print("Ready!")
