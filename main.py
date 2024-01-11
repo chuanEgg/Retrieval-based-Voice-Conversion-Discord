@@ -3,6 +3,10 @@ from discord.ext import commands
 import os
 import infer_bot as rvc
 import yt_dlp as youtube_dl
+import time
+from pydub import AudioSegment
+from scipy.io.wavfile import write
+
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='^', intents=intents)
 
@@ -21,7 +25,7 @@ voice_converter.change_sid()
 async def on_ready():
     await load_extensions()
     status_w = discord.Status.online
-    activity_w = discord.Activity(type=discord.ActivityType.playing, name="osu!")
+    activity_w = discord.Activity(type=discord.ActivityType.playing, name="Team Fortress 2")
     await bot.change_presence(status=status_w, activity=activity_w)
     print("Ready!")
     print("User name:", bot.user.name)
@@ -87,25 +91,37 @@ def download_audio(url: str):
             
 @bot.command(help="Download audio from youtube. format: mp3", brief="Download audio from youtube.")
 async def download(ctx, url: str):
+    embed = discord.Embed(title="Downloading...", description="Please wait.", color=0x4287f5)
     if url == "":
-        await ctx.send("Please input a url.")
+        embed.description = "Please input a url."
+        embed.title = "Error!"
+        await ctx.send(embed=embed)
         return
-    await ctx.send("Downloading...")
-    result = download_audio(url)
+    await ctx.send(embed=embed)
+    start_time = time.perf_counter()
+    try:
+        result = download_audio(url)
+    except:
+        result = False
+    end_time = time.perf_counter()
     if result:
-        await ctx.send(file=discord.File("audio/temp.mp3"))
-        await ctx.send("Downloaded!")
+        embed.title = "Downloaded!"
+        embed.description = f"Audio successfully downloaded under {end_time - start_time} ms."
+        await ctx.send(embed=embed,file=discord.File("audio/temp.mp3"))
         # os.remove("audio/raw/temp.mp3")
     else:
-        await ctx.send("Error!")
+        embed.title = "Error!"
+        embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s), or the url is not available."
+        await ctx.send(embed=embed)
     
 
-@bot.command(help="make Nyan sing using AI!", brief="sing!")
+@bot.command(help="make Nyan sing using AI! add transpose value after url (default: 0)", brief="make Nyan sing using AI!")
 async def sing(ctx, url: str, transpose: float = 0):
     if url == "":
         await ctx.send("Please input a url.")
         return
     await ctx.send("Downloading audio...")
+    start_time = time.perf_counter()
     result = download_audio(url)
     if result:
         await ctx.send("Extracting vocal...")
@@ -122,28 +138,17 @@ async def sing(ctx, url: str, transpose: float = 0):
             return
         await ctx.send("Recording...")
 
-        from scipy.io.wavfile import write
-        import wave
         try:
             rate = res[0]
-            write('audio/cover.wav', rate, res[1])
-            infiles = ["audio/cover.wav", "opt\\instrument_temp.mp3.reformatted.wav_10.wav"]
-            outfile = "result.wav"
-
-            data= []
-            for infile in infiles:
-                w = wave.open(infile, 'rb')
-                data.append( [w.getparams(), w.readframes(w.getnframes())] )
-                w.close()
-
-            output = wave.open(outfile, 'wb')
-            output.setparams(data[0][0])
-            output.writeframes(data[0][1])
-            output.writeframes(data[1][1])
-            output.close()
-
-            await ctx.send(file=discord.File("result.wav"))
-            await ctx.send("Nyan finished singing!")
+            write('cover.wav', rate, res[1])
+            vocal = AudioSegment.from_wav("cover.wav")
+            instrument = AudioSegment.from_wav("opt\\instrument_temp.mp3.reformatted.wav_10.wav")
+            vocal = vocal + 9
+            result = instrument.overlay(vocal)
+            result.export("result.mp3", format="mp3")
+            await ctx.send(file=discord.File("result.mp3"))
+            end_time = time.perf_counter()
+            await ctx.send(f"Nyan finished singing under {end_time - start_time} ms.")
         except:
             await ctx.send("Error during file writing!")
             return
@@ -152,33 +157,95 @@ async def sing(ctx, url: str, transpose: float = 0):
         await ctx.send("Error!")
     
 
-@bot.tree.command(name="ping")
+@bot.tree.command(name="ping", description="Get bot latency.")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f'{round(bot.latency * 1000)} (ms)')
 
-@bot.tree.command(name="hello")
-async def hello(interaction: discord.Interaction):
-    await interaction.response.send_message(f"Hi, {interaction.user.mention}! Nice to meet you!")
+# @bot.tree.command(name="hello")
+# async def hello(interaction: discord.Interaction):
+#     await interaction.response.send_message(f"Hi, {interaction.user.mention}! Nice to meet you!")
 
 @bot.tree.command(name="download", description="Download audio from youtube.")
 async def download(interaction: discord.Interaction, url: str):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'outtmpl': 'downloads/temp.%(ext)s'
-    }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    embed = discord.Embed(title="Downloading...", description="Please wait.", color=0x4287f5)
+    if url == "":
+        embed.description = "Please input a url."
+        embed.title = "Error!"
+        await interaction.response.send_message(embed=embed)
+        return
+    await interaction.response.send_message(embed=embed)
+    start_time = time.perf_counter()
+    try:
+        result = download_audio(url)
+    except:
+        result = False
+    end_time = time.perf_counter()
+    if result:
+        embed.title = "Downloaded!"
+        embed.description = f"Audio successfully downloaded under {round(end_time - start_time, 2)} ms."
+        await interaction.response.edit_message(embed=embed,file=discord.File("audio/temp.mp3"))
+        # os.remove("audio/raw/temp.mp3")
+    else:
+        embed.title = "Error!"
+        embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s), or the url is not available."
+        await interaction.response.edit_message(embed=embed)
+
+@bot.tree.command(name="sing", description="Make Nyan sing using AI!")
+async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
+    embed = discord.Embed(title="Downloading audio...", description="Please wait.", color=0x4287f5)
+    if url == "":
+        embed.description = "Please input a url."
+        embed.title = "Error!"
+        await interaction.response.send_message(embed=embed)
+        return
+    await interaction.response.send_message(embed=embed)
+    start_time = time.perf_counter()
+    result = download_audio(url)
+    if result:
+        embed.title = "Extracting vocal..."
+        await interaction.response.edit_message(embed=embed)
         try:
-            await interaction.response.send_message("Downloading...")
-            ydl.download([url])
-            await interaction.response.send_message(file=discord.File("downloads/temp.mp3"))
-            await interaction.response.send_message("Downloaded!")
-            os.remove("downloads/temp.mp3")
+            voice_converter.vocal_extract()
         except:
-            await interaction.response.send_message("Error!")
+            embed.title = "Error!"
+            embed.description = "Error occured during vocal extraction!"
+            await interaction.response.edit_message(embed=embed)
+            return
+        
+        embed.title = "Forcing Nyan to sing..."
+        await interaction.response.edit_message(embed=embed)
+        try:
+            res = voice_converter.infer(vc_transform0=transpose, input_audio0="opt\\vocal_temp.mp3.reformatted.wav_10.wav")
+        except:
+            embed.title = "Error!"
+            embed.description = "Error occured during inference!"
+            await interaction.response.edit_message(embed=embed)
+            return
+        
+        embed.title = "Recording..."
+        await interaction.response.edit_message(embed=embed)
+
+        try:
+            rate = res[0]
+            write('cover.wav', rate, res[1])
+            vocal = AudioSegment.from_wav("cover.wav")
+            instrument = AudioSegment.from_wav("opt\\instrument_temp.mp3.reformatted.wav_10.wav")
+            vocal = vocal + 9
+            result = instrument.overlay(vocal)
+            result.export("result.mp3", format="mp3")
+            embed.title = "Finished!"
+            end_time = time.perf_counter()
+            embed.description = f"Nyan finished singing under {round(end_time - start_time, 2)} ms."
+            await interaction.response.edit_message(embed=embed, file=discord.File("result.mp3"))
+        except:
+            embed.title = "Error!"
+            embed.description = "Error occured during file writing!"
+            await interaction.response.edit_message(embed=embed)
+            return
+        # # os.remove("audio/raw/temp.mp3")
+    else:
+        embed.title = "Error!"
+        embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s)"
+        await interaction.response.edit_message(embed=embed)
     
 bot.run(token)
