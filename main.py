@@ -24,6 +24,7 @@ voice_converter.change_sid()
 
 @bot.event
 async def on_ready():
+    await bot.wait_until_ready()
     await load_extensions()
     status_w = discord.Status.online
     activity_w = discord.Activity(type=discord.ActivityType.playing, name="Team Fortress 2")
@@ -102,16 +103,17 @@ async def download(ctx, url: str):
     await ctx.send(embed=embed)
     start_time = time.perf_counter()
     try:
-        await download_audio(url, id)
+        download_audio(url, id)
         end_time = time.perf_counter()
         embed.title = "Downloaded!"
-        embed.description = f"Audio successfully downloaded under {end_time - start_time}s."
+        embed.description = f"Audio successfully downloaded under {round(end_time - start_time, 2)}s."
         await ctx.send(embed=embed,file=discord.File(f"audio/{id}/download.mp3"))
         shutil.rmtree(f"audio/{id}")
         # os.remove("audio/raw/temp.mp3")
     except:
         embed.title = "Error!"
         embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s), or the url is not available."
+        shutil.rmtree(f"audio/{id}")
         await ctx.send(embed=embed)
     
 
@@ -174,7 +176,7 @@ async def ping(interaction: discord.Interaction):
 
 @bot.tree.command(name="download", description="Download audio from youtube.")
 async def download(interaction: discord.Interaction, url: str):
-    id = interaction.message.id
+    id = interaction.id
     embed = discord.Embed(title="Downloading...", description="Please wait.", color=0x4287f5)
     if url == "":
         embed.description = "Please input a url."
@@ -184,22 +186,24 @@ async def download(interaction: discord.Interaction, url: str):
     await interaction.response.send_message(embed=embed)
     start_time = time.perf_counter()
     try:
-        await download_audio(url, id=id)
+        download_audio(url, id=id)
         end_time = time.perf_counter()
         embed.title = "Downloaded!"
         embed.description = f"Audio successfully downloaded under {round(end_time - start_time, 2)} s."
-        await interaction.response.edit_message(embed=embed,file=discord.File(f"audio/{id}/temp.mp3"))
+        await interaction.edit_original_response(embed=embed)
+        await interaction.followup.send(file=discord.File(f"audio/{id}/download.mp3"))
         shutil.rmtree(f"audio/{id}")
         # os.remove("audio/raw/temp.mp3")
     except:
         embed.title = "Error!"
         embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s), or the url is not available."
-        await interaction.response.edit_message(embed=embed)
+        shutil.rmtree(f"audio/{id}")
+        await interaction.edit_original_response(embed=embed)
 
 @bot.tree.command(name="sing", description="Make Nyan sing using AI!")
 async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
     embed = discord.Embed(title="Downloading audio...", description="Please wait.", color=0x4287f5)
-    id = interaction.message.id
+    id = interaction.id
     path = os.getcwd()
     if url == "":
         embed.description = "Please input a url."
@@ -211,7 +215,7 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
     try:
         download_audio(url, id=id, filename=str(id), format="wav")
         embed.title = "Extracting vocal..."
-        await interaction.response.edit_message(embed=embed)
+        await interaction.edit_original_response(embed=embed)
         try:
             voice_converter.vocal_extract(dir_wav_input=f"{path}\\audio\\{id}",
                                           opt_ins_root=f"{path}\\audio\\{id}",
@@ -219,23 +223,23 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
         except:
             embed.title = "Error!"
             embed.description = "Error occured during vocal extraction!"
-            await interaction.response.edit_message(embed=embed)
+            await interaction.edit_original_response(embed=embed)
             shutil.rmtree(f"audio/{id}")
             return
         
         embed.title = "Forcing Nyan to sing..."
-        await interaction.response.edit_message(embed=embed)
+        await interaction.edit_original_response(embed=embed)
         try:
             res = voice_converter.infer(vc_transform0=transpose, input_audio0=f"audio/{id}/vocal_{id}.wav.reformatted.wav_10.wav")
         except:
             embed.title = "Error!"
             embed.description = "Error occured during inference!"
-            await interaction.response.edit_message(embed=embed)
+            await interaction.edit_original_response(embed=embed)
             shutil.rmtree(f"audio/{id}")
             return
         
         embed.title = "Recording..."
-        await interaction.response.edit_message(embed=embed)
+        await interaction.edit_original_response(embed=embed)
 
         try:
             rate = res[0]
@@ -248,13 +252,14 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
             end_time = time.perf_counter()
             embed.title = "Finished!"
             embed.description = f"Nyan finished singing under {round(end_time - start_time, 2)} s."
-            await interaction.response.edit_message(embed=embed, file=discord.File(f"audio/{id}/result.mp3"))
+            await interaction.edit_original_response(embed=embed)
+            await interaction.followup.send(file=discord.File(f"audio/{id}/result.mp3"))
             shutil.rmtree(f"audio/{id}")
         except:
             embed.title = "Error!"
             embed.description = "Error occured during file writing!"
             shutil.rmtree(f"audio/{id}")
-            await interaction.response.edit_message(embed=embed)
+            await interaction.edit_original_response(embed=embed)
             return
         # # os.remove("audio/raw/temp.mp3")
     except:
@@ -264,6 +269,6 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
             shutil.rmtree(f"audio/{id}")
         except:
             pass
-        await interaction.response.edit_message(embed=embed)
+        await interaction.edit_original_response(embed=embed)
     
 bot.run(token)
