@@ -48,4 +48,4 @@ python-dotenv>=1.0.0
 av
 # youtube_dl
 # manually install youtube_dl instead, run `python3 -m pip install --force-reinstall https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz`
-discord.py
+discord.py[voice]
