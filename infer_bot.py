@@ -13,7 +13,7 @@ class voice_converter:
         config = Config()
         self.vc = VC(config)
 
-    def vocal_extract(self,
+    async def vocal_extract(self,
                       model_choose = 'HP5_only_main_vocal',
                       dir_wav_input = 'E:\\Retrieval-based-Voice-Conversion-Discord\\audio',
                       opt_vocal_root = 'opt',
@@ -31,10 +31,10 @@ class voice_converter:
             agg=agg, 
             format0=format0)
         
-    def change_sid(self, sid = 'nyan.pth'):
+    async def change_sid(self, sid = 'nyan.pth'):
         self.vc.get_vc(sid)
     
-    def infer(self,
+    async def infer(self,
               sid = 0,
               spk_item = 0,
               input_audio0 = None, 
