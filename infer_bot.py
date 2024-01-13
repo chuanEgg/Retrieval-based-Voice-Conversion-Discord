@@ -36,7 +36,6 @@ class voice_converter:
     
     def infer(self,
               sid = 0,
-              spk_item = 0,
               input_audio0 = None, 
               vc_transform0 = -12, 
               f0_file = None, 
