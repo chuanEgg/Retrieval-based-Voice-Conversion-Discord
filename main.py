@@ -103,14 +103,9 @@ async def download(interaction: discord.Interaction, url: str):
 
 @bot.tree.command(name="sing", description="Make Nyan sing using AI!")
 async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
-    embed = discord.Embed(title="Downloading audio...", description="Please wait.", color=0x4287f5)
+    embed = discord.Embed(title="Downloading audio...", description="Please wait.", color=0x4287f5, url=url)
     id = interaction.id
     path = os.getcwd()
-    if url == "":
-        embed.description = "Please input a url."
-        embed.title = "Error!"
-        await interaction.response.send_message(embed=embed)
-        return
     await interaction.response.send_message(embed=embed)
     start_time = time.perf_counter()
     try:
@@ -118,7 +113,7 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
         embed.title = "Extracting vocal..."
         await interaction.edit_original_response(embed=embed)
         try:
-            await voice_converter.vocal_extract(dir_wav_input=f"{path}\\audio\\{id}",
+            voice_converter.vocal_extract(dir_wav_input=f"{path}\\audio\\{id}",
                                         opt_ins_root=f"{path}\\audio\\{id}",
                                         opt_vocal_root=f"{path}\\audio\\{id}",)
         except:
@@ -131,7 +126,7 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
         embed.title = "Forcing Nyan to sing..."
         await interaction.edit_original_response(embed=embed)
         try:
-            res = await voice_converter.infer(vc_transform0=transpose, input_audio0=f"audio/{id}/vocal_{id}.wav.reformatted.wav_10.wav")
+            res = voice_converter.infer(vc_transform0=transpose, input_audio0=f"audio/{id}/vocal_{id}.wav.reformatted.wav_10.wav")
         except:
             embed.title = "Error!"
             embed.description = "Error occured during inference!"
@@ -165,7 +160,7 @@ async def sing(interaction: discord.Interaction, url: str, transpose: int = 0):
         # # os.remove("audio/raw/temp.mp3")
     except:
         embed.title = "Error!"
-        embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s)"
+        embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 300s), or the url is not available."
         try:
             shutil.rmtree(f"audio/{id}")
         except:

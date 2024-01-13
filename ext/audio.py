@@ -34,6 +34,7 @@ class audio(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.voice_converter = rvc.voice_converter()
+        print("\n\n\n change sid \n\n\n")
         self.voice_converter.change_sid()
                 
     @commands.command(help="Download audio from youtube. format: mp3", brief="Download audio from youtube.")
@@ -71,19 +72,19 @@ class audio(commands.Cog):
         
 
     @commands.command(help="make Nyan sing using AI! add transpose value after url (default: 0)", brief="make Nyan sing using AI!")
-    async def sing(self, ctx, url: str, transpose: float = 0):
+    async def sing(self, ctx, url: str =  None, transpose: float = 0):
         id = ctx.message.id
         path = os.getcwd()
-        if url == "":
+        if url == None:
             await ctx.send("Please input a url.")
             return
         await ctx.send("Downloading audio...")
         start_time = time.perf_counter()
         try:
-            await download_audio(url, id=id, filename=str(id), format="wav")
+            download_audio(url, id=id, filename=str(id), format="wav")
             await ctx.send("Extracting vocal...")
             try:
-                await self.voice_converter.vocal_extract(dir_wav_input=f"{path}\\audio\\{id}",
+                self.voice_converter.vocal_extract(dir_wav_input=f"{path}\\audio\\{id}",
                                             opt_ins_root=f"{path}\\audio\\{id}",
                                             opt_vocal_root=f"{path}\\audio\\{id}",)
             except:
@@ -93,7 +94,7 @@ class audio(commands.Cog):
             await ctx.send("Forcing Nyan to sing...")
 
             try:
-                res = await self.voice_converter.infer(vc_transform0=transpose, input_audio0=f"audio/{id}/vocal_{id}.wav.reformatted.wav_10.wav")
+                res = self.voice_converter.infer(vc_transform0=transpose, input_audio0=f"audio/{id}/vocal_{id}.wav.reformatted.wav_10.wav")
             except:
                 await ctx.send("Error during inference!")
                 shutil.rmtree(f"audio/{id}")
