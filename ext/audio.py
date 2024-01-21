@@ -8,6 +8,7 @@ import yt_dlp as youtube_dl
 import time
 from pydub import AudioSegment
 from scipy.io.wavfile import write
+from typing import List
 
 def download_audio(url: str, id: str, filename: str = "download", format: str = "mp3"):
     ydl_opts = {
@@ -17,18 +18,25 @@ def download_audio(url: str, id: str, filename: str = "download", format: str = 
             'preferredcodec': format,
             'preferredquality': '192',
         }],
-        'outtmpl': f'audio/{id}/{filename}.%(ext)s'
+        'outtmpl': f'audio/{id}/{filename}.%(ext)s',
+        'quiet': True
     }
+
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        try:      
-            if ydl.extract_info(url, download=False)['duration'] > 200:
-                raise Exception("Video too long!")      
-            # print("\n\n\n\n\n Downloading... \n\n\n\n\n")
+        try:
             ydl.download(url)
         except:
-            # print("\n\n\n\n\n Error occured during downloading. \n\n\n\n\n")
-            raise Exception("Error occured during downloading.")
-    return
+            pass
+
+def check_url_video(url):
+    ydl = youtube_dl.YoutubeDL({'quiet': True})
+    try:
+        info = ydl.extract_info(url, download=False)
+        if info['duration'] > 200:
+            return [False, "Video too long!"]
+        return [True, None]
+    except Exception:
+        return [False, "Invalid URL!"]
 
 class audio(commands.Cog):
     def __init__(self, bot):
@@ -37,44 +45,54 @@ class audio(commands.Cog):
         self.voice_converter.change_sid()
                 
     @app_commands.command(name="download", description="Download audio from youtube.")
+    @app_commands.describe(url = "Youtube URL to download.")
     async def download(self, interaction: discord.Interaction, url: str):
         id = interaction.id
-        embed = discord.Embed(title="Downloading...", description="Please wait.", color=0x4287f5)
-        if url == "":
-            embed.description = "Please input a url."
-            embed.title = "Error!"
-            await interaction.response.send_message(embed=embed)
+        check = check_url_video(url)
+        if check[0] == False:
+            await interaction.response.send_message(check[1])
             return
+        embed = discord.Embed(title="Downloading...", description="Please wait.", color=0x4287f5, url=url)
         await interaction.response.send_message(embed=embed)
         start_time = time.perf_counter()
         try:
             download_audio(url, id)
         except:
             embed.title = "Error!"
-            embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 200s), or the url is not available."
             await interaction.edit_original_response(embed=embed)
             if os.path.exists(f"audio/{id}"):
                 shutil.rmtree(f"audio/{id}")
             return
-        try:
-            end_time = time.perf_counter()
-            embed.title = "Downloaded!"
-            embed.description = f"Audio successfully downloaded under {round(end_time - start_time, 2)} s."
-            await interaction.edit_original_response(embed=embed)
-            await interaction.followup.send(file=discord.File(f"audio/{id}/download.mp3"))
-            shutil.rmtree(f"audio/{id}")
-            # os.remove("audio/raw/temp.mp3")
-        except:
-            embed.title = "Error!"
-            embed.description = "Error occured during downloading. Maybe the video is too long. (Max: 200s), or the url is not available."
-            shutil.rmtree(f"audio/{id}")
-            await interaction.edit_original_response(embed=embed)
 
-    @app_commands.command(name="sing", description="Make Nyan sing using AI!")
-    async def sing(self, interaction: discord.Interaction, url: str, transpose: int = 0, protect: float = 0.33):
+        end_time = time.perf_counter()
+        embed.title = "Downloaded!"
+        embed.description = f"Audio successfully downloaded under {round(end_time - start_time, 2)} s."
+        await interaction.edit_original_response(embed=embed)
+        await interaction.followup.send(f"{interaction.user.mention}. Here is your file.",file=discord.File(f"audio/{id}/download.mp3"))
+        shutil.rmtree(f"audio/{id}")
+        os.remove("audio/raw/temp.mp3")
+
+    
+    async def model_autocomplete(self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> List[app_commands.Choice[str]]:
+        choices = []
+        for model in os.listdir("./assets/weights"):
+            if model.endswith(".pth"):
+                choices.append(model[:-4])
+        return [
+            app_commands.Choice(name=choice, value=choice)
+            for choice in choices if current.lower() in choice.lower()
+        ]
+    
+    @app_commands.command(name="sing", description="Make Character sing using AI!")
+    @app_commands.autocomplete(model=model_autocomplete)
+    async def sing(self, interaction: discord.Interaction, model: str, url: str, transpose: int = 0, protect: float = 0.33):
         embed = discord.Embed(title="Downloading audio...", description="Please wait.", color=0x4287f5, url=url)
         id = interaction.id
         path = os.getcwd()
+        print(model)
         await interaction.response.send_message(embed=embed)
         start_time = time.perf_counter()
         try:
@@ -92,11 +110,14 @@ class audio(commands.Cog):
                 shutil.rmtree(f"audio/{id}")
                 return
             
-            embed.title = "Forcing Nyan to sing..."
+            embed.title = f"Forcing {model} to sing..."
             await interaction.edit_original_response(embed=embed)
             try:
+                self.voice_converter.change_sid(model+".pth")
+                file_index1 = f'logs/{model}/added.index' 
                 res = self.voice_converter.infer(vc_transform0=transpose, 
                                                  input_audio0=f"audio/{id}/vocal_{id}.wav.reformatted.wav_10.wav",
+                                                 file_index1=file_index1,
                                                  protect0=protect)
             except:
                 embed.title = "Error!"
